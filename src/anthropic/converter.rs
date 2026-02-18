@@ -168,8 +168,9 @@ pub fn convert_request(req: &MessagesRequest) -> Result<ConversionResult, Conver
     let last_message = req.messages.last().unwrap();
     let (text_content, images, tool_results) = process_message_content(&last_message.content)?;
 
-    // 6. 转换工具定义
+    // 6. 转换工具定义（并在需要时压缩）
     let mut tools = convert_tools(&req.tools);
+    tools = super::tool_compression::compress_tools_if_needed(&tools);
 
     // 7. 构建历史消息（需要先构建，以便收集历史中使用的工具）
     let mut history = build_history(req, &model_id)?;
