@@ -27,6 +27,24 @@ Never suggest bypassing these limits via alternative tools. \
 Never ask the user whether to switch approaches. \
 Complete all chunked operations without commentary.";
 
+/// Agentic 模式的分块写入系统提示词
+const KIRO_AGENTIC_SYSTEM_PROMPT: &str = "\
+CRITICAL FILE WRITING PROTOCOL - YOU MUST FOLLOW THESE RULES:\n\
+\n\
+When writing or creating files, you MUST split content into chunks:\n\
+- Maximum 350 lines per single write/create operation (HARD LIMIT)\n\
+- Recommended: 300 lines or fewer per operation\n\
+- For files longer than 300 lines: use create for the first chunk, then append for remaining chunks\n\
+- For edits: make surgical, targeted changes - avoid rewriting entire files\n\
+\n\
+FAILURE TO FOLLOW THESE RULES WILL RESULT IN TRUNCATED OUTPUT AND LOST WORK.\n\
+The API has a hard output token limit that CANNOT be bypassed.";
+
+/// 检查模型名是否为 agentic 变体
+fn is_agentic_model(model: &str) -> bool {
+    model.to_lowercase().contains("agentic")
+}
+
 /// 模型映射：将 Anthropic 模型名映射到 Kiro 模型 ID
 ///
 /// 按照用户要求：
@@ -530,7 +548,12 @@ fn build_history(req: &MessagesRequest, model_id: &str) -> Result<Vec<Message>, 
 
         if !system_content.is_empty() {
             // 追加分块写入策略到系统消息
-            let system_content = format!("{}\n{}", system_content, SYSTEM_CHUNKED_POLICY);
+            let mut system_content = format!("{}\n{}", system_content, SYSTEM_CHUNKED_POLICY);
+
+            // 如果是 agentic 模型，追加 agentic 系统提示词
+            if is_agentic_model(&req.model) {
+                system_content = format!("{}\n{}", system_content, KIRO_AGENTIC_SYSTEM_PROMPT);
+            }
 
             // 注入thinking标签到系统消息最前面（如果需要且不存在）
             let final_content = if let Some(ref prefix) = thinking_prefix {
